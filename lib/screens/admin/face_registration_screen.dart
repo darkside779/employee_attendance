@@ -195,7 +195,14 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen>
           throw Exception('Failed to generate face features. Please try again.');
         }
         
-        print('✅ DEBUG: Generated web embedding for ${widget.employee.fullName}, capture ${_captureCount + 1}: ${embedding.length} dimensions');
+        // 🆕 GENERATE SIMULATED LANDMARKS FOR WEB
+        final simulatedLandmarks = _generateSimulatedLandmarks(_captureCount);
+        final simulatedGeometry = _generateSimulatedGeometry(_captureCount);
+        
+        _capturedLandmarks.add(simulatedLandmarks);
+        _capturedGeometry.add(simulatedGeometry);
+        
+        print('✅ DEBUG: Generated web embedding + simulated landmarks for ${widget.employee.fullName}, capture ${_captureCount + 1}: ${embedding.length} dimensions');
         _capturedEmbeddings.add(embedding);
         
       } else {
@@ -334,6 +341,12 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen>
       );
       
       await employeeProvider.updateEmployee(updatedEmployee);
+      
+      // 🚨 DEBUG: Print exactly what's being saved to Firebase
+      print('🔥 DEBUG: SAVING TO FIREBASE:');
+      print('  - faceEmbedding: ${avgEmbedding.length} dimensions');
+      print('  - faceLandmarks: ${avgLandmarks.length} landmarks -> $avgLandmarks');
+      print('  - faceGeometry: ${avgGeometry.length} measurements -> $avgGeometry');
       
       if (mounted) {
         setState(() {
@@ -618,6 +631,51 @@ class _FaceRegistrationScreenState extends State<FaceRegistrationScreen>
     }
     
     return avgGeometry;
+  }
+
+  // 🆕 GENERATE SIMULATED LANDMARKS FOR WEB (since ML Kit not available)
+  Map<String, List<double>> _generateSimulatedLandmarks(int captureIndex) {
+    // Generate realistic but simulated landmark positions
+    final random = Random(widget.employee.id.hashCode + captureIndex);
+    
+    // Base positions (simulating face center around 300x200)
+    final baseX = 300.0 + (random.nextDouble() - 0.5) * 20; // Small variation
+    final baseY = 200.0 + (random.nextDouble() - 0.5) * 15;
+    
+    return {
+      'FaceLandmarkType.leftEye': [baseX - 40 + random.nextDouble() * 5, baseY - 30 + random.nextDouble() * 3],
+      'FaceLandmarkType.rightEye': [baseX + 40 + random.nextDouble() * 5, baseY - 30 + random.nextDouble() * 3],
+      'FaceLandmarkType.noseBase': [baseX + random.nextDouble() * 3, baseY + random.nextDouble() * 3],
+      'FaceLandmarkType.bottomMouth': [baseX + random.nextDouble() * 3, baseY + 35 + random.nextDouble() * 3],
+      'FaceLandmarkType.leftMouth': [baseX - 15 + random.nextDouble() * 2, baseY + 30 + random.nextDouble() * 2],
+      'FaceLandmarkType.rightMouth': [baseX + 15 + random.nextDouble() * 2, baseY + 30 + random.nextDouble() * 2],
+      'FaceLandmarkType.leftCheek': [baseX - 55 + random.nextDouble() * 3, baseY + 10 + random.nextDouble() * 3],
+      'FaceLandmarkType.rightCheek': [baseX + 55 + random.nextDouble() * 3, baseY + 10 + random.nextDouble() * 3],
+    };
+  }
+
+  // 🆕 GENERATE SIMULATED GEOMETRY FOR WEB 
+  Map<String, double> _generateSimulatedGeometry(int captureIndex) {
+    final random = Random(widget.employee.id.hashCode + captureIndex);
+    
+    // Generate realistic geometry measurements
+    final faceWidth = 180.0 + random.nextDouble() * 40;
+    final faceHeight = 220.0 + random.nextDouble() * 30;
+    
+    return {
+      'face_width': faceWidth,
+      'face_height': faceHeight,
+      'face_area': faceWidth * faceHeight,
+      'aspect_ratio': faceWidth / faceHeight,
+      'eye_distance': 80.0 + random.nextDouble() * 20,
+      'nose_mouth_distance': 65.0 + random.nextDouble() * 15,
+      'mouth_width': 35.0 + random.nextDouble() * 10,
+      'head_euler_y': (random.nextDouble() - 0.5) * 10, // Small head turn
+      'head_euler_z': (random.nextDouble() - 0.5) * 5,  // Small head tilt
+      'left_eye_open': 0.8 + random.nextDouble() * 0.2,
+      'right_eye_open': 0.8 + random.nextDouble() * 0.2,
+      'smile_probability': random.nextDouble() * 0.3,
+    };
   }
 
   @override

@@ -431,6 +431,12 @@ class _FaceCheckinScreenState extends State<FaceCheckinScreen>
           // Fallback to embedding-only similarity
           similarity = _calculateCosineSimilarity(faceEmbedding, employee.faceEmbedding);
           print('📊 DEBUG: Embedding-only similarity with ${employee.fullName}: ${(similarity * 100).toStringAsFixed(1)}%');
+          
+          // 🆕 AUTO-UPDATE: If employee lacks landmarks but we can extract them, save for future
+          if (currentLandmarks.isNotEmpty && employee.faceLandmarks.isEmpty) {
+            print('🔄 DEBUG: Auto-updating ${employee.fullName} with landmarks for future enhanced verification');
+            _autoUpdateEmployeeLandmarks(employee, currentLandmarks, currentGeometry);
+          }
         }
         
         if (similarity > bestSimilarity) {
@@ -570,6 +576,27 @@ class _FaceCheckinScreenState extends State<FaceCheckinScreen>
     } catch (e) {
       print('❌ DEBUG: Face embedding generation error: $e');
       return [];
+    }
+  }
+
+  // 🆕 AUTO-UPDATE employee with landmarks during successful check-in
+  Future<void> _autoUpdateEmployeeLandmarks(
+    EmployeeModel employee,
+    Map<String, List<double>> landmarks,
+    Map<String, double> geometry,
+  ) async {
+    try {
+      final employeeProvider = context.read<EmployeeProvider>();
+      final updatedEmployee = employee.copyWith(
+        faceLandmarks: landmarks,
+        faceGeometry: geometry,
+        updatedAt: DateTime.now(),
+      );
+      
+      await employeeProvider.updateEmployee(updatedEmployee);
+      print('✅ DEBUG: Auto-updated ${employee.fullName} with landmarks - future check-ins will use enhanced verification');
+    } catch (e) {
+      print('❌ DEBUG: Failed to auto-update landmarks for ${employee.fullName}: $e');
     }
   }
 

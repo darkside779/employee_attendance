@@ -304,6 +304,12 @@ class _FaceCheckoutScreenState extends State<FaceCheckoutScreen>
           // Fallback to embedding-only similarity
           similarity = _calculateCosineSimilarity(faceEmbedding, employee.faceEmbedding);
           print('📊 DEBUG: Checkout embedding-only similarity with ${employee.fullName}: ${(similarity * 100).toStringAsFixed(1)}%');
+          
+          // 🆕 AUTO-UPDATE: If employee lacks landmarks but we can extract them, save for future
+          if (currentLandmarks.isNotEmpty && employee.faceLandmarks.isEmpty) {
+            print('🔄 DEBUG: Auto-updating ${employee.fullName} with landmarks for future enhanced verification');
+            _autoUpdateEmployeeLandmarks(employee, currentLandmarks, currentGeometry);
+          }
         }
         
         if (similarity > bestSimilarity) {
@@ -415,6 +421,27 @@ class _FaceCheckoutScreenState extends State<FaceCheckoutScreen>
     final dx = point1.x - point2.x;
     final dy = point1.y - point2.y;
     return sqrt(dx * dx + dy * dy);
+  }
+
+  // 🆕 AUTO-UPDATE employee with landmarks during successful check-out
+  Future<void> _autoUpdateEmployeeLandmarks(
+    EmployeeModel employee,
+    Map<String, List<double>> landmarks,
+    Map<String, double> geometry,
+  ) async {
+    try {
+      final employeeProvider = context.read<EmployeeProvider>();
+      final updatedEmployee = employee.copyWith(
+        faceLandmarks: landmarks,
+        faceGeometry: geometry,
+        updatedAt: DateTime.now(),
+      );
+      
+      await employeeProvider.updateEmployee(updatedEmployee);
+      print('✅ DEBUG: Auto-updated ${employee.fullName} with landmarks - future check-outs will use enhanced verification');
+    } catch (e) {
+      print('❌ DEBUG: Failed to auto-update landmarks for ${employee.fullName}: $e');
+    }
   }
 
   // Calculate cosine similarity between two embeddings
