@@ -157,7 +157,7 @@ class AccountingDashboard extends StatelessWidget {
               crossAxisCount: 2,
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 1.1,
+              childAspectRatio: 1.0,
               children: [
                 _ActionCard(
                   title: 'Manage Employees',
@@ -181,11 +181,18 @@ class AccountingDashboard extends StatelessWidget {
                   onTap: () => Navigator.pushNamed(context, AppRoutes.salaryCalculation),
                 ),
                 _ActionCard(
-                  title: '🔥 Face Recognition',
-                  subtitle: 'AI-powered check-in/out system',
-                  icon: Icons.face_retouching_natural,
+                  title: '🌅 Face Check-in',
+                  subtitle: 'AI-powered morning check-in',
+                  icon: Icons.login,
                   color: AppColors.success,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.faceRecognition),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.faceCheckin),
+                ),
+                _ActionCard(
+                  title: '🌆 Face Check-out',
+                  subtitle: 'AI-powered evening check-out',
+                  icon: Icons.logout,
+                  color: AppColors.warning,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.faceCheckout),
                 ),
               ],
             ),
@@ -297,13 +304,27 @@ class AccountingDashboard extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.faceRecognition),
-        backgroundColor: AppColors.success,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.face_retouching_natural),
-        label: const Text('Face Check-in'),
-        tooltip: 'Quick Face Recognition Check-in/out',
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.faceCheckin),
+            backgroundColor: AppColors.success,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.login),
+            label: const Text('Check-in'),
+            heroTag: "checkin",
+          ),
+          const SizedBox(width: 16),
+          FloatingActionButton.extended(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.faceCheckout),
+            backgroundColor: AppColors.warning,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.logout),
+            label: const Text('Check-out'),
+            heroTag: "checkout",
+          ),
+        ],
       ),
     );
   }

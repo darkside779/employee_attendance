@@ -15,6 +15,7 @@ import '../screens/accounting/attendance_reports.dart';
 import '../screens/accounting/salary_calculation.dart';
 import '../screens/accounting/payroll_export.dart';
 import '../screens/face_checkin_screen.dart';
+import '../screens/face_checkout_screen.dart';
 import '../screens/attendance/checkin_checkout_screen.dart';
 import '../screens/employee/attendance_history.dart';
 import '../screens/employee/employee_profile.dart';
@@ -121,6 +122,18 @@ class RouteGenerator {
       case AppRoutes.faceRecognition:
         return MaterialPageRoute(
           builder: (_) => const FaceCheckinScreen(),
+          settings: settings,
+        );
+        
+      case AppRoutes.faceCheckin:
+        return MaterialPageRoute(
+          builder: (_) => const FaceCheckinScreen(),
+          settings: settings,
+        );
+        
+      case AppRoutes.faceCheckout:
+        return MaterialPageRoute(
+          builder: (_) => const FaceCheckoutScreen(),
           settings: settings,
         );
         

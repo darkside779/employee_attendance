@@ -22,6 +22,8 @@ class AppRoutes {
   
   // Employee routes
   static const String faceRecognition = '/employee/face-recognition';
+  static const String faceCheckin = '/employee/face-checkin';
+  static const String faceCheckout = '/employee/face-checkout';
   static const String checkinCheckout = '/employee/checkin-checkout';
   static const String attendanceHistory = '/employee/attendance-history';
   static const String employeeProfile = '/employee/profile';

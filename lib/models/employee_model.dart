@@ -16,6 +16,8 @@ class EmployeeModel {
   final List<String> workDays;
   final String imageUrl;
   final List<double> faceEmbedding;
+  final Map<String, List<double>> faceLandmarks;  // Facial landmarks for precise verification
+  final Map<String, double> faceGeometry;         // Face geometric measurements
   final List<String> faceCheckinImages;    // URLs of captured check-in images
   final List<String> faceCheckoutImages;   // URLs of captured check-out images
   final DateTime? lastFaceCapture;         // Last time face image was captured
@@ -41,6 +43,8 @@ class EmployeeModel {
     required this.workDays,
     required this.imageUrl,
     required this.faceEmbedding,
+    this.faceLandmarks = const {},
+    this.faceGeometry = const {},
     this.faceCheckinImages = const [],
     this.faceCheckoutImages = const [],
     this.lastFaceCapture,
@@ -71,6 +75,16 @@ class EmployeeModel {
       workDays: List<String>.from(data['workDays'] ?? []),
       imageUrl: data['imageUrl'] ?? '',
       faceEmbedding: List<double>.from(data['faceEmbedding'] ?? []),
+      faceLandmarks: data['faceLandmarks'] != null 
+          ? Map<String, List<double>>.from(
+              (data['faceLandmarks'] as Map).map((key, value) => 
+                MapEntry(key.toString(), List<double>.from(value ?? []))
+              )
+            )
+          : {},
+      faceGeometry: data['faceGeometry'] != null 
+          ? Map<String, double>.from(data['faceGeometry'])
+          : {},
       faceCheckinImages: List<String>.from(data['faceCheckinImages'] ?? []),
       faceCheckoutImages: List<String>.from(data['faceCheckoutImages'] ?? []),
       lastFaceCapture: data['lastFaceCapture'] != null 
@@ -144,6 +158,8 @@ class EmployeeModel {
       'workDays': workDays,
       'imageUrl': imageUrl,
       'faceEmbedding': faceEmbedding,
+      'faceLandmarks': faceLandmarks,
+      'faceGeometry': faceGeometry,
       'faceCheckinImages': faceCheckinImages,
       'faceCheckoutImages': faceCheckoutImages,
       'lastFaceCapture': lastFaceCapture != null ? Timestamp.fromDate(lastFaceCapture!) : null,
@@ -182,9 +198,23 @@ class EmployeeModel {
   }
 
 
-  // Get shift duration in hours
+  // Get shift duration in hours (handles overnight shifts)
   double get shiftDurationHours {
-    final duration = shiftEnd.difference(shiftStart);
+    var duration = shiftEnd.difference(shiftStart);
+    
+    // Handle overnight shifts (e.g., 4:00 PM - 12:00 AM)
+    if (duration.isNegative) {
+      // Add 24 hours for next-day calculation
+      final nextDayEnd = DateTime(
+        shiftEnd.year,
+        shiftEnd.month,
+        shiftEnd.day + 1,
+        shiftEnd.hour,
+        shiftEnd.minute,
+      );
+      duration = nextDayEnd.difference(shiftStart);
+    }
+    
     return duration.inMinutes / 60.0;
   }
 
@@ -222,6 +252,8 @@ class EmployeeModel {
     List<String>? workDays,
     String? imageUrl,
     List<double>? faceEmbedding,
+    Map<String, List<double>>? faceLandmarks,
+    Map<String, double>? faceGeometry,
     List<String>? faceCheckinImages,
     List<String>? faceCheckoutImages,
     DateTime? lastFaceCapture,
@@ -247,6 +279,8 @@ class EmployeeModel {
       workDays: workDays ?? this.workDays,
       imageUrl: imageUrl ?? this.imageUrl,
       faceEmbedding: faceEmbedding ?? this.faceEmbedding,
+      faceLandmarks: faceLandmarks ?? this.faceLandmarks,
+      faceGeometry: faceGeometry ?? this.faceGeometry,
       faceCheckinImages: faceCheckinImages ?? this.faceCheckinImages,
       faceCheckoutImages: faceCheckoutImages ?? this.faceCheckoutImages,
       lastFaceCapture: lastFaceCapture ?? this.lastFaceCapture,

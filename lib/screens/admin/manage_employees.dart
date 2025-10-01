@@ -1,19 +1,13 @@
 // ignore_for_file: use_build_context_synchronously, unused_element_parameter
 
-import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/employee_model.dart';
 import '../../providers/employee_provider.dart';
 import '../../routes/app_routes.dart';
-import '../../core/services/face_recognition_service.dart';
-import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-import 'package:google_ml_kit/google_ml_kit.dart';
+import 'face_registration_screen.dart';
 
 class ManageEmployees extends StatefulWidget {
   const ManageEmployees({super.key});
@@ -670,142 +664,14 @@ class _ManageEmployeesState extends State<ManageEmployees> {
     }
   }
 
-  // 🆕 NEW METHOD: Handle face registration/update
+  // 🆕 UPDATED METHOD: Handle face registration with camera
   void _handleFaceRegistration(EmployeeModel employee) async {
-    if (employee.imageUrl.isEmpty) {
-      // Show error if no photo uploaded
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Employee must have a photo before registering face'),
-            ],
-          ),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
-
-    // Show processing dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              employee.hasFaceData ? 'Updating face data...' : 'Processing face registration...',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'This may take a few seconds',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
+    // Navigate to camera-based face registration screen
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FaceRegistrationScreen(employee: employee),
       ),
     );
-
-    try {
-      List<double> faceEmbedding;
-      
-      if (kIsWeb) {
-        // Web-compatible face registration (simulated but functional)
-        // ignore: avoid_print
-        print('🌐 DEBUG: Using web-compatible face registration');
-        await Future.delayed(const Duration(seconds: 2)); // Simulate processing time
-        faceEmbedding = await _generateWebFaceFeatures(employee.imageUrl);
-        
-      } else {
-        // Mobile/Desktop: Use actual ML Kit
-        final imageFile = await _downloadImageFromUrl(employee.imageUrl);
-        
-        // Process face embedding
-        final faceService = FaceRecognitionService();
-        final inputImage = InputImage.fromFile(imageFile);
-        
-        // Detect faces in the image
-        final faces = await GoogleMlKit.vision.faceDetector().processImage(inputImage);
-        
-        if (faces.isEmpty) {
-          throw Exception('No face detected in the image');
-        }
-        
-        if (faces.length > 1) {
-          throw Exception('Multiple faces detected. Please use an image with only one face');
-        }
-        
-        // Extract face embedding
-        faceEmbedding = await faceService.extractFaceEmbedding(inputImage, faces.first);
-        
-        if (faceEmbedding.isEmpty) {
-          throw Exception('Failed to extract face features');
-        }
-      }
-      
-      // Update employee with face embedding
-      final employeeProvider = context.read<EmployeeProvider>();
-      final updatedEmployee = employee.copyWith(
-        faceEmbedding: faceEmbedding,
-        lastFaceCapture: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      
-      await employeeProvider.updateEmployee(updatedEmployee);
-      
-      // Close processing dialog
-      if (mounted) Navigator.of(context).pop();
-      
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Text(
-                  employee.hasFaceData 
-                      ? 'Face data updated successfully!' 
-                      : 'Face registered successfully!',
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
-      
-    } catch (e) {
-      // Close processing dialog
-      if (mounted) Navigator.of(context).pop();
-      
-      // Show error message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text('Face registration failed: $e'),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    }
   }
 
   void _showDeleteConfirmation(EmployeeModel employee) {
@@ -896,45 +762,6 @@ class _ManageEmployeesState extends State<ManageEmployees> {
     }
   }
 
-  // Generate face features for web (simulated but unique per image)
-  Future<List<double>> _generateWebFaceFeatures(String imageUrl) async {
-    // Create unique features based on image URL and employee data
-    // This creates a deterministic but unique embedding for each image
-    final urlHash = imageUrl.hashCode;
-    final random = math.Random(urlHash);
-    
-    // Generate 128-dimensional feature vector
-    return List.generate(128, (index) {
-      // Create features that are consistent for the same image
-      // but different for different images
-      final base = (urlHash + index) * 0.001;
-      return (base % 1.0) + (random.nextDouble() - 0.5) * 0.1;
-    });
-  }
-
-  // Helper method to download image from URL (Web Compatible)
-  Future<File> _downloadImageFromUrl(String imageUrl) async {
-    try {
-      final response = await http.get(Uri.parse(imageUrl));
-      if (response.statusCode != 200) {
-        throw Exception('Failed to download image');
-      }
-
-      if (kIsWeb) {
-        // For web, create a temporary file using dart:html or memory
-        // Since we're on web, we'll simulate this differently
-        throw Exception('Web-based face registration not fully supported yet. Please use mobile app or upload face manually.');
-      } else {
-        // For mobile/desktop
-        final tempDir = await getTemporaryDirectory();
-        final file = File('${tempDir.path}/temp_face_image.jpg');
-        await file.writeAsBytes(response.bodyBytes);
-        return file;
-      }
-    } catch (e) {
-      throw Exception('Failed to download image: $e');
-    }
-  }
 }
 
 class _EmployeeDetailsSheet extends StatefulWidget {
@@ -1257,7 +1084,11 @@ class _EmployeeDetailsSheetState extends State<_EmployeeDetailsSheet> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.of(context).pop();
-              _processeFaceRegistration(context, employee);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => FaceRegistrationScreen(employee: employee),
+                ),
+              );
             },
             icon: const Icon(Icons.face, size: 18),
             label: const Text('Register Face'),
@@ -1271,171 +1102,5 @@ class _EmployeeDetailsSheetState extends State<_EmployeeDetailsSheet> {
     );
   }
 
-  void _processeFaceRegistration(
-    BuildContext context,
-    EmployeeModel employee,
-  ) async {
-    // Save context reference before async operations
-    final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final employeeProvider = context.read<EmployeeProvider>();
-
-    // Show processing dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Processing face registration...'),
-            SizedBox(height: 8),
-            Text(
-              'Generating face features from photo...',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      // Add a small delay to show processing
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // For web compatibility, use a simulated face recognition process
-      // In production, you would use ML Kit on mobile or a web-based face API
-      List<double> faceEmbedding;
-      
-      if (kIsWeb) {
-        // Web version: Generate features from image URL hash and metadata
-        faceEmbedding = await _generateWebFaceFeatures(employee.imageUrl);
-      } else {
-        // Mobile version: Use actual ML Kit (when not on web)
-        try {
-          final imageFile = await _downloadImageFromUrl(employee.imageUrl);
-          final faceService = FaceRecognitionService();
-          final result = await faceService.processFaceRegistration(imageFile.path);
-          
-          if (!result.success) {
-            throw Exception(result.message);
-          }
-          
-          if (result.embedding == null) {
-            throw Exception('Failed to extract face features');
-          }
-
-          faceEmbedding = result.embedding!;
-          await imageFile.delete(); // Clean up
-        } catch (e) {
-          // Fallback to web method if ML Kit fails
-          faceEmbedding = await _generateWebFaceFeatures(employee.imageUrl);
-        }
-      }
-
-      // Update employee with face embedding
-      final updatedEmployee = EmployeeModel(
-        id: employee.id,
-        employeeCode: employee.employeeCode,
-        fullName: employee.fullName,
-        email: employee.email,
-        phone: employee.phone,
-        age: employee.age,
-        department: employee.department,
-        position: employee.position,
-        salary: employee.salary,
-        currency: employee.currency,
-        shiftStart: employee.shiftStart,
-        shiftEnd: employee.shiftEnd,
-        workDays: employee.workDays,
-        imageUrl: employee.imageUrl,
-        faceEmbedding: faceEmbedding,
-        isActive: employee.isActive,
-        joinDate: employee.joinDate,
-        createdAt: employee.createdAt,
-        updatedAt: DateTime.now(),
-        createdBy: employee.createdBy,
-      );
-
-      // Update in database
-      final success = await employeeProvider.updateEmployee(updatedEmployee);
-
-      if (mounted) navigator.pop(); // Close loading dialog
-
-      if (success && mounted) {
-        // Refresh the employee list
-        employeeProvider.loadEmployees();
-
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('Face registration completed for ${employee.fullName}'),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        navigator.pop(); // Close employee details sheet
-      } else {
-        throw Exception('Failed to update employee record');
-      }
-    } catch (e) {
-      if (mounted) {
-        navigator.pop(); // Close loading dialog
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Failed to register face: $e')),
-              ],
-            ),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
-  // Generate face features for web (simulated but unique per image)
-  Future<List<double>> _generateWebFaceFeatures(String imageUrl) async {
-    // Create unique features based on image URL and employee data
-    // This creates a deterministic but unique embedding for each image
-    final urlHash = imageUrl.hashCode;
-    final random = math.Random(urlHash);
-    
-    // Generate 128-dimensional feature vector
-    return List.generate(128, (index) {
-      // Create features that are consistent for the same image
-      // but different for different images
-      final base = (urlHash + index) * 0.001;
-      return (base % 1.0) + (random.nextDouble() - 0.5) * 0.1;
-    });
-  }
-
-  // Helper method to download image from URL (mobile only)
-  Future<File> _downloadImageFromUrl(String imageUrl) async {
-    try {
-      final response = await http.get(Uri.parse(imageUrl));
-      if (response.statusCode != 200) {
-        throw Exception('Failed to download image');
-      }
-
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/temp_face_image.jpg');
-      await file.writeAsBytes(response.bodyBytes);
-      return file;
-    } catch (e) {
-      throw Exception('Failed to download image: $e');
-    }
-  }
 
 }
